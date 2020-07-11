@@ -14,22 +14,23 @@ buildscript {
     }
     dependencies {
 		classpath 'de.richsource.gradle.plugins:gwt-gradle-plugin:0.6'
-		classpath 'me.champeau.gradle:jmh-gradle-plugin:0.4.8'
-		classpath 'io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.9.0'
+		classpath 'me.champeau.gradle:jmh-gradle-plugin:0.5.0'
+		classpath 'io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.21.2'
+		classpath 'de.marcphilipp.gradle:nexus-publish-plugin:0.4.0'
 		classpath 'com.badlogicgames.gdx:gdx-tools:1.9.10'
 		classpath "org.mini2Dx:gradle-mini2Dx-mgcb:1.0.2"
-		classpath 'com.android.tools.build:gradle:3.4.2'
+        classpath 'com.android.tools.build:gradle:3.6.2'
 		classpath "com.viridiansoftware:gradle-desugar-task:1.0.1"
 		classpath 'com.mobidevelop.robovm:robovm-gradle-plugin:2.3.8'
     }
 }
 
 Properties sdkProperties = new Properties()
-def sdkPropertiesFile = project.rootProject.file('local.properties');
+def sdkPropertiesFile = project.rootProject.file('local.properties')
 if(sdkPropertiesFile.exists()) {
-	sdkProperties.load(sdkPropertiesFile.newDataInputStream());
+	sdkProperties.load(sdkPropertiesFile.newDataInputStream())
 	sdkProperties.each { Object key, Object value ->
-		ext[key] = value;
+		ext[key] = value
 	}
 }
 
@@ -40,6 +41,8 @@ if(project.hasProperty('ossrhUser') && project.hasProperty("release")) {
 		packageGroup = 'org.mini2Dx'
 		username = ossrhUser
 		password = ossrhPassword
+		numberOfRetries = 30
+		delayBetweenRetriesInMillis = 5000
 	}
 }
 
@@ -83,11 +86,11 @@ def docProjects() {
 	subprojects.findAll { !it.name.contains('uat') && !it.name.contains('monogame') }
 }
 
-def projectVersion = '2.0.0-alpha.26';
+def projectVersion = '2.0.0-alpha.27'
 
 configure(docProjects()) {
 	apply plugin: "signing"
-	apply plugin: "maven"
+	apply plugin: "maven-publish"
 	
 	group = 'org.mini2Dx'
 	version = projectVersion
@@ -120,12 +123,12 @@ configure(docProjects()) {
 		        }
 		    }
 		}
-		
+
 		task sourcesJar(type: Jar) {
 			archiveClassifier = 'sources'
 			from android.sourceSets.main.java.srcDirs[0]
 		}
-		
+
 		task javadocJar(type: Jar) {
 			archiveClassifier = 'javadoc'
 			from javadoc
@@ -135,7 +138,7 @@ configure(docProjects()) {
 			archives javadocJar, sourcesJar
 		}
 	} else {
-		apply plugin: "java"
+		apply plugin: "java-library"
 		apply plugin: "checkstyle"
 		
 		sourceCompatibility = 1.8
@@ -144,7 +147,7 @@ configure(docProjects()) {
 		configurations {
 			testOutput.extendsFrom (testCompile)
 		}
-		
+
 		task sourcesJar(type: Jar) {
 			archiveClassifier = 'sources'
 			from sourceSets.main.allSource
@@ -174,40 +177,31 @@ configure(docProjects()) {
 	}
   
 	// Maven Central publication
-	if(project.hasProperty('ossrhUser')) {
-		signing {
-			sign configurations.archives
-		}
-		
-		uploadArchives {
-			repositories {
-				mavenDeployer {
-					// POM signature
-					beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-					// Target repository
-					repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-						authentication(userName: ossrhUser, password: ossrhPassword)
-					}
-					pom.project {
-						name project.name
-						description project.description
-						packaging 'jar'
-						url 'https://github.com/mini2Dx/mini2Dx'
-	
-						scm {
-							connection 'scm:git:https://github.com/mini2Dx/mini2Dx.git'
-							developerConnection 'scm:git:git@github.com:mini2Dx/mini2Dx.git'
-							url 'https://github.com/mini2Dx/mini2Dx.git'
-						}
+	if(project.hasProperty('ossrhUser') && project.hasProperty("release")) {
+		apply plugin: "de.marcphilipp.nexus-publish"
 
+		publishing {
+			publications {
+				mavenJava(MavenPublication) {
+					afterEvaluate {
+						from project.name.contains('android') ? components.release : components.java
+						artifact sourcesJar
+						artifact javadocJar
+					}
+					pom {
+						name = project.name
+						description = project.description
+						packaging = 'jar'
+						url = 'https://github.com/mini2Dx/mini2Dx'
+						artifactId = archivesBaseName
+						groupId = group
 						licenses {
 							license {
-								name 'Apache License 2.0'
-								url 'https://opensource.org/licenses/Apache-2.0'
-								distribution 'repo'
+								name = 'Apache License 2.0'
+								url = 'https://opensource.org/licenses/Apache-2.0'
+								distribution = 'repo'
 							}
 						}
-	
 						developers {
 							developer {
 								id = 'tomcashman'
@@ -215,9 +209,41 @@ configure(docProjects()) {
 								email = 'thomascashman404@gmail.com'
 							}
 						}
+						scm {
+							connection = 'scm:git:https://github.com/mini2Dx/mini2Dx.git'
+							developerConnection = 'scm:git:git@github.com:mini2Dx/mini2Dx.git'
+							url = 'https://github.com/mini2Dx/mini2Dx.git'
+						}
 					}
 				}
 			}
+			repositories {
+				maven {
+					name = "GitHubPackages"
+					url = uri("https://maven.pkg.github.com/mini2Dx/mini2Dx")
+					credentials {
+						username = project.getProperty('gpr.user')
+						password = project.getProperty('gpr.key')
+					}
+				}
+			}
+
+			nexusPublishing {
+				connectTimeout = Duration.ofMinutes(15)
+				clientTimeout  = Duration.ofMinutes(15)
+				repositories {
+					sonatype {
+						packageGroup = rootProject.nexusStaging.packageGroup
+						stagingProfileId = rootProject.nexusStaging.stagingProfileId
+						username = project.getProperty('ossrhUser')
+						password = project.getProperty('ossrhPassword')
+					}
+				}
+			}
+		}
+
+		signing {
+			sign publishing.publications
 		}
 	}
 }
@@ -245,10 +271,12 @@ project(":" + rootProject.name + "-core") {
 	jmh {
 		timeUnit = 'ns'
 		threads = Runtime.getRuntime().availableProcessors()
-		warmupIterations = 10
-		iterations = 10
+		warmupIterations = 5
+		iterations = 5
 		fork = Runtime.getRuntime().availableProcessors()
-		jvmArgsPrepend = '-Xmx1024m'
+		jvmArgsPrepend = '-Xmx2048m'
+		duplicateClassesStrategy = DuplicatesStrategy.EXCLUDE
+		include = ['LerperPerformanceTest']
 	}
     
 	jacocoTestReport {
@@ -459,7 +487,7 @@ project(":" + rootProject.name + "-all") {
 					'-o', project.file("generated-src").getAbsolutePath(),
 					'-p', 'mini2Dx-all',
 					'-b',
-					'--desugar', "${desugarWorkarounds}",
+					'--desugar', "${workarounds}\\mini2Dx-workarounds\\",
 					'-r', "${jdkDll}"
 		}
 
@@ -494,7 +522,7 @@ project(":" + rootProject.name + "-uats") {
 			dlls = files('../monogame-pipeline-ext/bin/Debug/monogame-pipeline-ext.dll')
 		}
 
-		task desugarJar(type: com.viridiansoftware.desugar.DesugarTask, dependsOn: jar) {
+		task desugarJar(type: com.viridiansoftware.desugar.DesugarTask, dependsOn: [jar, project(":" + rootProject.name + "-all").fatJar]) {
 			inputJar file('build/libs/' + project.name + '-' + project.version + '.jar')
 			outputJar file('build/libs/' + project.name + '-desugarjar.jar')
 			bootstrapClasspath files("${jdkJar}")
@@ -511,7 +539,8 @@ project(":" + rootProject.name + "-uats") {
 					'-o', project.file("generated-src").getAbsolutePath(),
 					'-p', 'mini2Dx-uats',
 					'-b',
-					'--desugar', "${desugarWorkarounds}",
+					'--desugar', "${workarounds}\\mini2Dx-workarounds\\",
+					'--overrides', "${workarounds}\\mini2Dx-overrides\\",
 					'-r', "${jdkDll};..\\..\\..\\all\\generated-src\\bin\\Debug\\mini2Dx-all.dll"
 		}
 
@@ -521,7 +550,7 @@ project(":" + rootProject.name + "-uats") {
 	}
 
 	if(!projectVersion.contains("SNAPSHOT")) {
-		def docDirectory = new File(project.parent.projectDir.getParentFile(), "mini2Dx-website/docs/javadoc/${projectVersion}");
+		def docDirectory = new File(project.parent.projectDir.getParentFile(), "mini2Dx-website/docs/javadoc/${projectVersion}")
 		println docDirectory.absolutePath
 
 		task docs(type: Javadoc) {
@@ -676,6 +705,14 @@ project(":" + rootProject.name + "-artemis-odb") {
     }
 }
 
+tasks.withType(JavaCompile) {
+    options.fork = true
+}
+
+tasks.withType(Test) {
+    maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+}
+
 boolean hasConsoleSdk() {
 	try {
 		def rootDir = "$rootDir"
@@ -687,13 +724,13 @@ boolean hasConsoleSdk() {
 			}
 			def transpilerHome = properties.getProperty('transpilerExe')
 			if(transpilerHome != null && transpilerHome.length() > 0) {
-				return true;
+				return true
 			}
 		}
 	} catch (all) {
 		println all
 	}
-	return false;
+	return false
 }
 
 boolean hasAndroidSdk() {
@@ -708,7 +745,7 @@ boolean hasAndroidSdk() {
 			def androidHome = properties.getProperty('sdk.dir')
 			if(androidHome != null && androidHome.length() > 0) {
 				println androidHome
-				return true;
+				return true
 			}
 		}
 	} catch (all) {
@@ -718,7 +755,7 @@ boolean hasAndroidSdk() {
 		def androidHome = "$System.env.ANDROID_HOME"
 		if(androidHome != null && androidHome.length() > 0 && !androidHome.contains('null')) {
 			println androidHome
-			return true;
+			return true
 		}
 	} catch (all) {
 		println all

@@ -14,6 +14,7 @@
  * limitations under the License.
  ******************************************************************************/
 
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ namespace monogame
 {
     public class MonoGameTaskExecutor : global::Java.Lang.Object, Org.Mini2Dx.Core.TaskExecutor
     {
-        private class MonoGameAsyncFuture : Org.Mini2Dx.Core.Executor.AsyncFuture
+        internal class MonoGameAsyncFuture : Org.Mini2Dx.Core.Executor.AsyncFuture
         {
             private Task _task;
 
@@ -40,7 +41,7 @@ namespace monogame
             }
         }
 
-        private class MonoGameAsyncResult : MonoGameAsyncFuture, Org.Mini2Dx.Core.Executor.AsyncResult
+        internal class MonoGameAsyncResult : MonoGameAsyncFuture, Org.Mini2Dx.Core.Executor.AsyncResult
         {
             private TaskAwaiter<object> taskAwaiter;
             internal MonoGameAsyncResult(Task<object> task) : base(task)
@@ -101,7 +102,7 @@ namespace monogame
 
         public AsyncResult submit(Callable c)
         {
-            return new MonoGameAsyncResult(Task.Factory.StartNew(c.call));
+            return new MonoGameAsyncResult(Task.Factory.StartNew((Func<object>) c.call));
         }
 
         public void submit(FrameSpreadTask fst)
