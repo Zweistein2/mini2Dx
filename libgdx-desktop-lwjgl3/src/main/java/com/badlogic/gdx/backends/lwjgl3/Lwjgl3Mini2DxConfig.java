@@ -15,8 +15,15 @@
  ******************************************************************************/
 package com.badlogic.gdx.backends.lwjgl3;
 
+import org.mini2Dx.core.TimestepMode;
+
 public class Lwjgl3Mini2DxConfig extends Lwjgl3ApplicationConfiguration {
 	public final String gameIdentifier;
+
+	/**
+	 * The {@link TimestepMode} to use
+	 */
+	public TimestepMode timestepMode = TimestepMode.DEFAULT;
 	/**
 	 * The target framerate
 	 */
@@ -29,6 +36,11 @@ public class Lwjgl3Mini2DxConfig extends Lwjgl3ApplicationConfiguration {
 	 * True if an error should be logged when frames a dropped
 	 */
 	public boolean errorOnFrameDrop = false;
+	/**
+	 * Sets the target framerate for the application. The CPU sleeps as needed. Must be positive.
+	 * Use 0 to never sleep. Default is 0.
+	 */
+	public int foregroundFPS = 0;
 	/**
 	 * The window listener
 	 */
@@ -52,6 +64,8 @@ public class Lwjgl3Mini2DxConfig extends Lwjgl3ApplicationConfiguration {
 		targetFPS = config.targetFPS;
 		capUpdatesPerSecond = config.capUpdatesPerSecond;
 		errorOnFrameDrop = config.errorOnFrameDrop;
+		windowListener = config.windowListener;
+		foregroundFPS = config.foregroundFPS;
 	}
 
 	private void setTargetTimestep() {

@@ -68,13 +68,17 @@ public abstract class GameWrapper implements ApplicationListener {
 		Mdx.executor = new LibgdxTaskExecutor(Math.max(2, Runtime.getRuntime().availableProcessors()));
 		Mdx.files = new LibgdxFiles();
 		Mdx.fonts = new LibgdxFonts();
-		Mdx.graphics = new LibgdxGraphicsUtils();
+		Mdx.graphics = createGraphicsUtils();
 		Mdx.graphicsContext = createGraphicsContext();
 		Mdx.input = new LibgdxInput();
 		Mdx.log = new LibgdxLogger();
 		Mdx.reflect = new JvmReflection();
 
 		gameContainer.start(Mdx.graphicsContext);
+	}
+
+	protected GraphicsUtils createGraphicsUtils() {
+		return new LibgdxGraphicsUtils();
 	}
 
 	@Override
@@ -86,12 +90,35 @@ public abstract class GameWrapper implements ApplicationListener {
 	}
 
 	@Override
-	public void update(float delta) {
+	public void preUpdate(float delta) {
 		if(gameContainer == null) {
 			return;
 		}
 		gameContainer.preUpdate(delta);
+	}
+
+	@Override
+	public void preUpdatePhysics(float delta) {
+		if(gameContainer == null) {
+			return;
+		}
+		gameContainer.preUpdatePhysics(delta);
+	}
+
+	@Override
+	public void update(float delta) {
+		if(gameContainer == null) {
+			return;
+		}
 		gameContainer.update(delta);
+	}
+
+	@Override
+	public void updatePhysics(float delta) {
+		if(gameContainer == null) {
+			return;
+		}
+		gameContainer.updatePhysics(delta);
 	}
 
 	@Override

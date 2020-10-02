@@ -18,6 +18,7 @@ package org.mini2Dx.ui.element;
 import org.mini2Dx.core.graphics.Color;
 import org.mini2Dx.core.serialization.annotation.ConstructorArg;
 import org.mini2Dx.core.serialization.annotation.Field;
+import org.mini2Dx.gdx.math.MathUtils;
 import org.mini2Dx.gdx.utils.Array;
 import org.mini2Dx.ui.UiContainer;
 import org.mini2Dx.ui.event.ActionEvent;
@@ -41,6 +42,7 @@ public class Select<V> extends UiElement implements Actionable, FlexUiElement {
 	private Array<ActionListener> actionListeners;
 
 	private int selectedIndex = 0;
+	private boolean wrapSelectedIndex = true;
 	private Color enabledTextColor = null;
 	private Color disabledTextColor = null;
 
@@ -210,6 +212,14 @@ public class Select<V> extends UiElement implements Actionable, FlexUiElement {
 	}
 
 	/**
+	 * Clears all options
+	 */
+	public void clearOptions() {
+		options.clear();
+		selectedIndex = 0;
+	}
+
+	/**
 	 * Removes a selectable option from this {@link Select} based on the
 	 * option's label
 	 * 
@@ -221,6 +231,7 @@ public class Select<V> extends UiElement implements Actionable, FlexUiElement {
 		for (int i = 0; i < options.size; i++) {
 			if (options.get(i).getLabel().equals(label)) {
 				options.removeIndex(i);
+				selectedIndex = MathUtils.clamp(selectedIndex, 0, options.size -1);
 				return true;
 			}
 		}
@@ -239,6 +250,7 @@ public class Select<V> extends UiElement implements Actionable, FlexUiElement {
 		for (int i = 0; i < options.size; i++) {
 			if (options.get(i).getValue().equals(value)) {
 				options.removeIndex(i);
+				selectedIndex = MathUtils.clamp(selectedIndex, 0, options.size -1);
 				return true;
 			}
 		}
@@ -311,10 +323,14 @@ public class Select<V> extends UiElement implements Actionable, FlexUiElement {
 
 	/**
 	 * Changes the current selection to the next available option. If the
-	 * current selection is the last option then this method does nothing.
+	 * current selection is the last option then this method
+	 * does nothing if {@link #wrapSelectedIndex} is false.
 	 */
 	public void nextOption() {
 		if (selectedIndex >= options.size - 1) {
+			if(wrapSelectedIndex) {
+				selectedIndex = 0;
+			}
 			return;
 		}
 		selectedIndex++;
@@ -323,10 +339,13 @@ public class Select<V> extends UiElement implements Actionable, FlexUiElement {
 	/**
 	 * Changes the current selection to the option before the currently selected
 	 * option. If this current selection is the first option then this method
-	 * does nothing.
+	 * does nothing if {@link #wrapSelectedIndex} is false.
 	 */
 	public void previousOption() {
 		if (selectedIndex <= 0) {
+			if(wrapSelectedIndex) {
+				selectedIndex = options.size - 1;
+			}
 			return;
 		}
 		selectedIndex--;
@@ -577,5 +596,21 @@ public class Select<V> extends UiElement implements Actionable, FlexUiElement {
 	 */
 	public void setHeightFlex(float height) {
 		flexLayout = FlexLayoutRuleset.setHeight(flexLayout, height);
+	}
+
+	/**
+	 * True if the index will wrap around if the player keeps pressing one of the buttons
+	 * @return
+	 */
+	public boolean isWrapSelectedIndex() {
+		return wrapSelectedIndex;
+	}
+
+	/**
+	 * Sets if the index will wrap around if the player keeps pressing one of the buttons
+	 * @param wrapSelectedIndex
+	 */
+	public void setWrapSelectedIndex(boolean wrapSelectedIndex) {
+		this.wrapSelectedIndex = wrapSelectedIndex;
 	}
 }
